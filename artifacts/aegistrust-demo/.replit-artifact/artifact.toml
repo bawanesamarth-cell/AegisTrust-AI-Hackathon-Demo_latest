@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AegisTrust AI"
+description = "A hackathon demo of a zero-trust AI security console. Inspect prompts for injection patterns, mask sensitive values, evaluate simulated agent tool calls against policy, and review an append-only hash-linked audit trail."
+version = "1.0.0"
+id = "artifacts/aegistrust-demo"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21743
+
+[services.development]
+run = "pnpm --filter @workspace/aegistrust-demo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aegistrust-demo", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/aegistrust-demo/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21743"
+BASE_PATH = "/"

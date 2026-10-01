@@ -1,6 +1,6 @@
-# [Project name]
+# AegisTrust AI
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A hackathon demo of an AI security console for prompt inspection, sensitive-data masking, agent-action policy checks, and audit review.
 
 ## Run & Operate
 
@@ -22,15 +22,19 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/aegistrust-demo/` — AegisTrust web app and browser-side demo logic.
+- `artifacts/api-server/` — shared API scaffold; the initial demo does not depend on it.
+- `lib/api-spec/openapi.yaml` — shared API contract; unchanged for the frontend-only MVP.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The hackathon demo runs locally in the browser and does not send prompts to an LLM or external service.
+- Prompt detection and tool authorization are illustrative deterministic rules, not a validated security product.
+- Audit records should avoid raw prompt contents and detected PII; client-side hash chaining is demonstrative, not an immutable compliance ledger.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The console demonstrates three runtime controls: prompt/injection inspection with PII masking, role-based authorization of simulated agent tool calls, and a verifiable local audit-event chain.
 
 ## User preferences
 
@@ -38,7 +42,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Do not describe demo detections, latency, audit integrity, or policy decisions as production-validated guarantees.
 
 ## Pointers
 
