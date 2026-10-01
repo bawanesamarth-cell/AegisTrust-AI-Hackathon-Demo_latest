@@ -1,0 +1,392 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Email and password authentication
+  - name: security
+    description: Prompt inspection and simulated agent action checks
+  - name: audit
+    description: User-scoped security audit history
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRegistrationInput"
+      responses:
+        "201":
+          description: Account created and session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "400":
+          description: Invalid registration details
+        "409":
+          description: Email is already registered
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginInput"
+      responses:
+        "200":
+          description: Signed in and session cookie set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Email or password is incorrect
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "200":
+          description: Session cookie cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLogoutResponse"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current account
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: No valid session
+  /security/inspect:
+    post:
+      operationId: inspectPrompt
+      tags: [security]
+      summary: Redact sensitive values and inspect prompt risk with Gemini
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptInspectionInput"
+      responses:
+        "200":
+          description: Prompt inspection completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptInspectionResult"
+        "400":
+          description: Invalid prompt
+        "401":
+          description: Authentication required
+        "502":
+          description: Gemini inspection failed
+  /security/actions/evaluate:
+    post:
+      operationId: evaluateToolAction
+      tags: [security]
+      summary: Evaluate a simulated tool action against demo policy
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolActionInput"
+      responses:
+        "200":
+          description: Policy decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolActionDecision"
+        "400":
+          description: Invalid tool action
+        "401":
+          description: Authentication required
+  /audit/events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: List the current user's security events
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Audit events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEvent"
+        "401":
+          description: Authentication required
+    delete:
+      operationId: clearAuditEvents
+      tags: [audit]
+      summary: Clear the current user's demo audit events
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Number of events removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditClearResult"
+        "401":
+          description: Authentication required
+  /audit/verify:
+    post:
+      operationId: verifyAuditChain
+      tags: [audit]
+      summary: Verify the current user's hash-linked audit chain
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Chain verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditVerification"
+        "401":
+          description: Authentication required
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: aegistrust_session
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [operator]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, email, displayName, role, createdAt]
+    AuthRegistrationInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+      required: [email, displayName, password]
+    AuthLoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required: [email, password]
+    AuthLogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    PromptInspectionInput:
+      type: object
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      required: [prompt]
+    PromptFinding:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [PII, INJECTION]
+        label:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+        severity:
+          type: string
+          enum: [LOW, MODERATE, HIGH]
+      required: [category, label, count, severity]
+    PromptInspectionResult:
+      type: object
+      properties:
+        id:
+          type: string
+        decision:
+          type: string
+          enum: [ALLOW, SANITIZE, BLOCK]
+        risk:
+          type: string
+          enum: [LOW, MODERATE, HIGH]
+        sanitizedPrompt:
+          type: string
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptFinding"
+        analysis:
+          type: string
+        inputHash:
+          type: string
+        model:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        auditEventId:
+          type: integer
+      required: [id, decision, risk, sanitizedPrompt, findings, analysis, inputHash, model, createdAt, auditEventId]
+    ToolActionInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [lookup_order, refund_payment, export_customer_data, delete_customer, send_external_email]
+        role:
+          type: string
+          enum: [support_agent, analyst, security_admin]
+        resource:
+          type: string
+          minLength: 1
+          maxLength: 120
+        amount:
+          type: number
+          minimum: 0
+          maximum: 100000
+      required: [action, role, resource]
+    ToolActionDecision:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        reason:
+          type: string
+        action:
+          type: string
+        role:
+          type: string
+        resource:
+          type: string
+        auditEventId:
+          type: integer
+      required: [allowed, reason, action, role, resource, auditEventId]
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        category:
+          type: string
+        decision:
+          type: string
+        summary:
+          type: string
+        previousHash:
+          type: string
+        hash:
+          type: string
+      required: [id, timestamp, category, decision, summary, previousHash, hash]
+    AuditVerification:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        checkedEvents:
+          type: integer
+          minimum: 0
+        errors:
+          type: array
+          items:
+            type: string
+      required: [valid, checkedEvents, errors]
+    AuditClearResult:
+      type: object
+      properties:
+        deletedEvents:
+          type: integer
+          minimum: 0
+      required: [deletedEvents]
+
